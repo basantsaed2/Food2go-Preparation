@@ -2537,30 +2537,30 @@ const HomePage = () => {
     );
 
     // Add this separator component right after the left section and before the right section
-    const SectionSeparator = () => (
+    const SectionSeparator = ({ notificationsCount, t, primaryColor, secondaryColor }) => (
         <div className="relative flex items-center justify-center my-4 md:my-0 md:mx-4">
             {/* Vertical line for desktop, horizontal for mobile */}
-            <div className="hidden md:block h-full w-1 bg-gradient-to-b from-red-200 via-red-400 to-pink-200 rounded-full"></div>
+            <div className="h-full w-0.5 bg-gradient-to-b from-transparent via-gray-300 to-transparent rounded-full" style={{ backgroundColor: primaryColor + '50' }}></div>
 
             {/* Mobile horizontal line */}
-            <div className="md:hidden w-full h-1 bg-gradient-to-r from-red-200 via-red-400 to-pink-200 rounded-full"></div>
+            <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-gray-300 to-transparent rounded-full" style={{ backgroundColor: primaryColor + '50' }}></div>
 
-            {/* Animated notification indicator */}
-            <div className="absolute hidden md:flex items-center justify-center w-10 h-10 bg-white border-2 border-red-500 rounded-full shadow-lg z-10">
+            {/* Animated notification indicator (Desktop only) */}
+            <div className="absolute flex items-center justify-center w-10 h-10 bg-white border-2 rounded-full shadow-lg z-10"
+                style={{ borderColor: primaryColor }}
+            >
                 <div className="relative">
-                    <span className="text-lg">🔔</span>
-                    {/* Pulsing animation */}
-                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20"></div>
+                    <Bell className="w-5 h-5" style={{ color: primaryColor }} />
+                    {notificationsCount > 0 && (
+                        // Pulsing animation for emphasis
+                        <>
+                            <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20"></div>
+                            {/* <span className="absolute -top-2 -right-2 w-4 h-4 flex items-center justify-center text-xs font-bold text-white rounded-full bg-red-600">
+                                {notificationsCount}
+                            </span> */}
+                        </>
+                    )}
                 </div>
-            </div>
-
-            {/* Text label - only show on mobile */}
-            <div className="absolute md:hidden bg-white px-3 py-1 rounded-full border border-red-300 shadow-sm">
-                <span className="text-xs font-semibold text-red-600 flex items-center gap-1">
-                    <span>🆕</span>
-                    New Orders
-                    <span>🆕</span>
-                </span>
             </div>
         </div>
     );
@@ -2694,12 +2694,22 @@ const HomePage = () => {
                     </div>
                 </div>
 
+                {/* --- Separator Component (Conditional) --- */}
+                {showNotificationDialog && (
+                    <SectionSeparator
+                        notificationsCount={notifications.length}
+                        t={t}
+                        primaryColor={primaryColor}
+                        secondaryColor={secondaryColor}
+                    />
+                )}
+
                 {/* Right Side: Non-Overwriting Notification Menu (Sidebar) */}
                 <div className={`
                     transition-all duration-300 
                     ${showNotificationDialog ? 'w-1/3 max-w-[400px] p-4 border-l bg-white shadow-xl' : 'w-0 overflow-hidden'} 
                     flex-shrink-0 
-                    h-full
+                    h-full  /* <-- FIX: Inherits the height from the <main> container */
                     rounded-xl
                 `}
                     style={{
@@ -2708,19 +2718,16 @@ const HomePage = () => {
                 >
                     {/* Render NotificationDialog content inside the sidebar container */}
                     {showNotificationDialog && (
-                        <>
-                            <SectionSeparator />
-                            <NotificationDialog
-                                notifications={notifications}
-                                t={t}
-                                handleShowDetails={handleShowDetails}
-                                handleMarkAsRead={handleMarkAsRead}
-                                loadingMarkAsRead={loadingMarkAsRead}
-                                primaryColor={primaryColor}
-                                setShowNotificationDialog={setShowNotificationDialog}
-                                NotificationOrderCard={NotificationOrderCard}
-                            />
-                        </>
+                        <NotificationDialog
+                            notifications={notifications}
+                            t={t}
+                            handleShowDetails={handleShowDetails}
+                            handleMarkAsRead={handleMarkAsRead}
+                            loadingMarkAsRead={loadingMarkAsRead}
+                            primaryColor={primaryColor}
+                            setShowNotificationDialog={setShowNotificationDialog}
+                            NotificationOrderCard={NotificationOrderCard}
+                        />
                     )}
                 </div>
             </main>
@@ -2766,53 +2773,124 @@ const HomePage = () => {
 
             {/* Order Details Dialog (Modal/Overlay - unchanged) */}
             {showOrderDialog && selectedOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={() => setShowOrderDialog(false)}>
-                    <div
-                        className="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-2xl h-5/6 overflow-y-auto"
-                        onClick={e => e.stopPropagation()}
-                        dir={isRTL ? "rtl" : "ltr"}
-                    >
-                        {/* Order Detail content (simplified for brevity, assume full details here) */}
-                        <div className="flex justify-between items-center mb-4 border-b pb-3">
+                <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-30 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-xl shadow-2xl w-[90%] max-w-4xl max-h-[90%] overflow-y-auto" {...handlers}>
+                        <div className="flex justify-between items-center pb-4 mb-4 border-b">
                             <h3 className="text-2xl font-bold" style={{ color: primaryColor }}>
                                 {t.orderNumber} #{selectedOrder.order_number}
                             </h3>
-                            <button onClick={() => setShowOrderDialog(false)} className="text-gray-500 hover:text-gray-800">
-                                <X className="w-6 h-6" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleSwipe('right')}
+                                    disabled={currentSlideIndex === 0}
+                                    className="p-2 rounded-full disabled:opacity-50"
+                                >
+                                    &larr;
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                    {currentSlideIndex + 1} / {orders.length}
+                                </span>
+                                <button
+                                    onClick={() => handleSwipe('left')}
+                                    disabled={currentSlideIndex === orders.length - 1}
+                                    className="p-2 rounded-full disabled:opacity-50"
+                                >
+                                    &rarr;
+                                </button>
+                                <button onClick={() => setShowOrderDialog(false)} style={{ color: secondaryColor }}>
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
-                        {/* Full details here */}
-                        <div className="space-y-4">
-                            {/* ... (Detailed order breakdown as needed) ... */}
-                            <p>Type: {selectedOrder.type}</p>
-                            <p>Status: {selectedOrder.status}</p>
-                            <p>Total: {selectedOrder.total.toFixed(2)}</p>
-                            {/* Items List */}
-                            <h4 className="font-bold">{t.items}:</h4>
-                            <ul>
-                                {selectedOrder.items.map((item, index) => (
-                                    <li key={index} className="border-b border-dashed py-1">
-                                        {item.quantity}x {item.name}
-                                        {item.addons.length > 0 && <span className="text-xs text-gray-500 ml-2"> (+{t.addons}: {item.addons.map(a => a.name).join(', ')})</span>}
-                                    </li>
-                                ))}
-                            </ul>
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 mt-4">
-                                <button
-                                    onClick={() => { handleStatusChange(selectedOrder.id, "preparing"); setShowOrderDialog(false); }}
-                                    disabled={loadingChange || selectedOrder.status === "preparing"}
-                                    className={`p-3 rounded-lg text-white font-bold flex-1 ${loadingChange || selectedOrder.status === "preparing" ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'}`}
-                                >
-                                    {t.preparing}
-                                </button>
-                                <button
-                                    onClick={() => { handleStatusChange(selectedOrder.id, "done"); setShowOrderDialog(false); }}
-                                    disabled={loadingChange || selectedOrder.status === "done"}
-                                    className={`p-3 rounded-lg text-white font-bold flex-1 ${loadingChange || selectedOrder.status === "done" ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'}`}
-                                >
-                                    {t.markDone}
-                                </button>
+
+                        {/* Order Details Content */}
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Left Column: Items, Addons, Excludes */}
+                            <div>
+                                <h4 className="text-xl font-semibold mb-3 border-b pb-2" style={{ color: primaryColor }}><List className="inline-block w-5 h-5 mr-2" /> {t.items}</h4>
+                                <ul className="space-y-4">
+                                    {selectedOrder.items.map((item, itemIndex) => (
+                                        <li key={itemIndex} className="bg-gray-50 p-3 rounded-lg border-l-4" style={{ borderColor: primaryColor }}>
+                                            <p className="text-lg font-bold flex justify-between">
+                                                <span>{item.quantity}x {item.name}</span>
+                                                {/* <span className="font-normal text-gray-600">{item.price.toFixed(2)}</span> */}
+                                            </p>
+                                            {/* Addons */}
+                                            {item.addons.length > 0 && (
+                                                <div className="mt-1 pl-4 text-sm">
+                                                    <p className="font-semibold">{t.addons}:</p>
+                                                    <ul className="list-disc pl-5 text-gray-600">
+                                                        {item.addons.map((addon, addonIndex) => (
+                                                            <li key={addonIndex}>{addon.count}x {addon.name}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {/* Excludes */}
+                                            {item.excludes.length > 0 && (
+                                                <div className="mt-1 pl-4 text-sm text-red-600">
+                                                    <p className="font-semibold">{t.excludes}: {item.excludes.join(', ')}</p>
+                                                </div>
+                                            )}
+                                            {/* Extras */}
+                                            {item.extras.length > 0 && (
+                                                <div className="mt-1 pl-4 text-sm text-blue-600">
+                                                    <p className="font-semibold">{t.extras}: {item.extras.join(', ')}</p>
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Right Column: Summary, Status, Actions */}
+                            <div>
+                                <h4 className="text-xl font-semibold mb-3 border-b pb-2" style={{ color: primaryColor }}><Clock className="inline-block w-5 h-5 mr-2" /> {t.status} & Summary</h4>
+
+                                {/* Status Box */}
+                                <div className="mb-4 p-4 rounded-xl text-white font-bold text-center text-lg"
+                                    style={{ backgroundColor: selectedOrder.status === 'done' ? '#10b981' : primaryColor }}>
+                                    {t.status}: {selectedOrder.status === "preparing" ? t.preparing : t.done}
+                                </div>
+
+                                {/* Order Info */}
+                                <div className="mb-4 space-y-2 text-sm">
+                                    <p><strong>{t.type}:</strong> {selectedOrder.type} {selectedOrder.table && `| ${t.table} ${selectedOrder.table}`}</p>
+                                    <p><strong>{t.orderTime}:</strong> {selectedOrder.time} ({selectedOrder.date})</p>
+                                </div>
+
+                                {/* Pricing Summary */}
+                                {/* <div className="p-4 rounded-lg bg-gray-100 space-y-2">
+                                    <p className="flex justify-between"><span>{t.items} {t.total}:</span> <span>{selectedOrder.itemsPrice.toFixed(2)}</span></p>
+                                    <p className="flex justify-between"><span>{t.addons}:</span> <span>{selectedOrder.addonsPrice.toFixed(2)}</span></p>
+                                    <p className="flex justify-between text-red-600"><span>Discount:</span> <span>-{selectedOrder.discount.toFixed(2)}</span></p>
+                                    <p className="flex justify-between border-t pt-2"><span>VAT/Tax:</span> <span>{selectedOrder.vatTax.toFixed(2)}</span></p>
+                                    <p className="flex justify-between text-lg font-bold border-t pt-2" style={{ color: primaryColor }}><span>Total:</span> <span>{selectedOrder.total.toFixed(2)}</span></p>
+                                </div> */}
+
+                                {/* Note */}
+                                {selectedOrder.note && (
+                                    <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: tertiaryColor, color: secondaryColor, border: `1px solid ${primaryColor}50` }}>
+                                        <p className="font-semibold">{t.note}: <span className="font-normal">{selectedOrder.note}</span></p>
+                                    </div>
+                                )}
+
+                                {/* Action Button */}
+                                <div className="mt-6">
+                                    <button
+                                        onClick={() => handleStatusChange(selectedOrder.id, "done")}
+                                        disabled={loadingChange || selectedOrder.status === "done"}
+                                        className={`
+                                                w-full p-3 rounded-lg font-bold text-lg transition-colors duration-200 flex items-center justify-center gap-2
+                                                ${loadingChange || selectedOrder.status === "done"
+                                                ? 'bg-gray-400 cursor-not-allowed text-white'
+                                                : 'bg-green-600 text-white hover:bg-green-700'}
+                                            `}
+                                    >
+                                        <CheckCircle className="w-6 h-6" />
+                                        {loadingChange ? t.processing : selectedOrder.status === "done" ? t.completed : t.markDone}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
