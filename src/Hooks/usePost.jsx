@@ -61,7 +61,7 @@ export const usePost = ({ url, /* login = false, */ type = false }) => {
                             auth.toastError(error.response.data.message); // Display the general error message
                      } else {
                             // If no specific error messages are found, just display a fallback message
-                            auth.toastError(t('An unknown error occurred.'));
+                            auth.toastError('An unknown error occurred.');
                      }
               }
 

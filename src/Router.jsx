@@ -35,6 +35,6 @@ export const router = createBrowserRouter(
   ]
   ,
   {
-    basename: "/preparation",
+    basename: "/preparation_man",
   }
 );
